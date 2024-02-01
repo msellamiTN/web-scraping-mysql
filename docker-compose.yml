@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+  mysql_jobs:
+    build: ./mysql
+    hostname: mysql_jobs
+    container_name: mysql_jobs
+    restart: always
+    environment:
+      MYSQL_DATABASE: jobs_scraping  # Ensure there's no trailing space
+      MYSQL_USER: crawler
+      MYSQL_PASSWORD: supersecret
+      MYSQL_ROOT_PASSWORD: supersecret
+    ports:
+      - "3306:3306"
+    volumes:
+      - database:/var/lib/mysql
+      - ./mysql/sql-scripts/jobs.sql:/docker-entrypoint-initdb.d/jobs.sql
+    networks:
+      - crawler-net
+  app:
+    build: ./app
+    hostname: crawler
+    container_name: crawler
+    restart: on-failure
+    depends_on:
+      mysql_jobs:
+        condition: service_started
+    environment:
+      - DB_HOST=mysql_jobs  # Assuming your crawler.py uses this environment variable for the DB host
+      - DB_USER=crawler
+      - DB_PASSWORD=supersecret
+      - DB_NAME=jobs_scraping  # Ensure there's no trailing space
+    networks:
+      - crawler-net
+
+volumes:
+  database:
+
+networks:
+  crawler-net:
+    driver: bridge
